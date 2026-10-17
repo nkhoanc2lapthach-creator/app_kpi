@@ -117,7 +117,7 @@ export default function ReviewPage() {
     });
 
     return calculateOverallKpi(calcItems);
-  }, [editingItems, isBgh]);
+  }, [editingItems]);
 
   // Xác nhận duyệt Bước 1 (Tổ trưởng)
   const handleConfirmStep1 = () => {

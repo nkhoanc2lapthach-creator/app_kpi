@@ -129,3 +129,20 @@ export interface SchoolSettings {
   bonusPercentageCap: number; // 10%
   bonusThresholdRatio: number; // 30%
 }
+
+export interface KpiFrameworkTask {
+  id: string;
+  academicYear: string;
+  departmentId?: string; // 'ALL' hoặc ID của Tổ bộ môn cụ thể
+  departmentName?: string;
+  section: KpiSection;   // SECTION_I hoặc SECTION_II
+  category: TaskCategory; // FIXED, EMERGING, PROJECT
+  code: string;
+  name: string;
+  description?: string;
+  standardScore: number;
+  difficultyCoefficient: number;
+  orderIndex: number;
+  isActive: boolean;
+}
+

@@ -7,14 +7,16 @@ import {
   KpiPeriod, 
   KpiSubmission, 
   KpiSubmissionItem,
-  Department 
+  Department,
+  KpiFrameworkTask 
 } from './types';
 import { 
   initialSchoolSettings, 
   initialDepartments, 
   initialProfiles, 
   initialPeriod, 
-  initialSubmissions 
+  initialSubmissions,
+  initialFrameworkTasks 
 } from './mock-data';
 import { calculateOverallKpi, calculateItemScore } from './kpi-calculator';
 
@@ -37,12 +39,22 @@ interface KpiContextType {
   addTeachersFromExcel: (teachers: UserProfile[]) => void;
   addNewTeacher: (teacher: UserProfile) => void;
   removeTeacher: (teacherId: string) => void;
+
+  // Quản lý khung tiêu chí KPI theo đơn vị
+  frameworkTasks: KpiFrameworkTask[];
+  getCriteriaForDepartment: (departmentId?: string) => KpiFrameworkTask[];
+  addFrameworkTask: (task: KpiFrameworkTask) => void;
+  updateFrameworkTask: (taskId: string, updates: Partial<KpiFrameworkTask>) => void;
+  deleteFrameworkTask: (taskId: string) => void;
+  importFrameworkTasks: (tasks: KpiFrameworkTask[]) => void;
+  resetFrameworkTasks: (departmentId?: string) => void;
+
   resetAllData: () => void;
 }
 
 const KpiContext = createContext<KpiContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'APP_KPI_STATE_V1';
+const STORAGE_KEY = 'APP_KPI_STATE_V2';
 
 export function KpiProvider({ children }: { children: React.ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -52,6 +64,7 @@ export function KpiProvider({ children }: { children: React.ReactNode }) {
   const [schoolSettings, setSchoolSettings] = useState<SchoolSettings>(initialSchoolSettings);
   const [period, setPeriod] = useState<KpiPeriod>(initialPeriod);
   const [submissions, setSubmissions] = useState<KpiSubmission[]>(initialSubmissions);
+  const [frameworkTasks, setFrameworkTasks] = useState<KpiFrameworkTask[]>(initialFrameworkTasks);
 
   // Load state từ localStorage khi mở app
   useEffect(() => {
@@ -65,8 +78,11 @@ export function KpiProvider({ children }: { children: React.ReactNode }) {
         if (data.schoolSettings) setSchoolSettings(data.schoolSettings);
         if (data.period) setPeriod(data.period);
         if (data.submissions) setSubmissions(data.submissions);
+        if (data.frameworkTasks && data.frameworkTasks.length > 0) {
+          setFrameworkTasks(data.frameworkTasks);
+        }
       }
-    } catch (e) {
+    } catch {
       console.warn('Lỗi load state từ localStorage, sử dụng mock ban đầu');
     }
     setIsLoaded(true);
@@ -83,12 +99,13 @@ export function KpiProvider({ children }: { children: React.ReactNode }) {
         schoolSettings,
         period,
         submissions,
+        frameworkTasks,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-    } catch (e) {
+    } catch {
       console.warn('Lỗi lưu state vào localStorage');
     }
-  }, [allUsers, currentUser, departments, schoolSettings, period, submissions, isLoaded]);
+  }, [allUsers, currentUser, departments, schoolSettings, period, submissions, frameworkTasks, isLoaded]);
 
   // Cập nhật cài đặt trường
   const updateSchoolSettings = (newSettings: Partial<SchoolSettings>) => {
@@ -98,6 +115,68 @@ export function KpiProvider({ children }: { children: React.ReactNode }) {
   // Cập nhật trạng thái kỳ đánh giá (Khóa sổ / Mở lại)
   const updatePeriodStatus = (status: 'OPEN' | 'LOCKED' | 'ARCHIVED') => {
     setPeriod((prev) => ({ ...prev, status }));
+  };
+
+  // Lấy danh sách tiêu chí phù hợp với đơn vị (Tổ bộ môn)
+  // Ưu tiên tiêu chí riêng của tổ; nếu tổ chưa cấu hình riêng thì dùng tiêu chí mặc định toàn trường ('ALL')
+  const getCriteriaForDepartment = (deptId?: string): KpiFrameworkTask[] => {
+    if (!deptId || deptId === 'ALL') {
+      return frameworkTasks.filter((t) => t.departmentId === 'ALL' && t.isActive);
+    }
+
+    const deptTasks = frameworkTasks.filter((t) => t.departmentId === deptId && t.isActive);
+    if (deptTasks.length > 0) {
+      // Nếu tổ có tiêu chí riêng, kết hợp thêm Mục I chung nếu tổ chưa tự định nghĩa Mục I
+      const hasSection1 = deptTasks.some((t) => t.section === 'SECTION_I');
+      if (!hasSection1) {
+        const defaultSection1 = frameworkTasks.filter((t) => t.departmentId === 'ALL' && t.section === 'SECTION_I' && t.isActive);
+        return [...defaultSection1, ...deptTasks];
+      }
+      return deptTasks;
+    }
+
+    // Mặc định trả về tiêu chí toàn trường
+    return frameworkTasks.filter((t) => t.departmentId === 'ALL' && t.isActive);
+  };
+
+  // Thêm tiêu chí mới
+  const addFrameworkTask = (task: KpiFrameworkTask) => {
+    setFrameworkTasks((prev) => [...prev, task]);
+  };
+
+  // Cập nhật tiêu chí
+  const updateFrameworkTask = (taskId: string, updates: Partial<KpiFrameworkTask>) => {
+    setFrameworkTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t))
+    );
+  };
+
+  // Xóa tiêu chí
+  const deleteFrameworkTask = (taskId: string) => {
+    setFrameworkTasks((prev) => prev.filter((t) => t.id !== taskId));
+  };
+
+  // Import danh sách tiêu chí từ Excel
+  const importFrameworkTasks = (imported: KpiFrameworkTask[]) => {
+    setFrameworkTasks((prev) => {
+      // Cập nhật hoặc thêm mới dựa trên mã tiêu chí và mã đơn vị
+      const existingKeys = new Set(prev.map((t) => `${t.departmentId}_${t.code}`));
+      const newItems = imported.filter((t) => !existingKeys.has(`${t.departmentId}_${t.code}`));
+      return [...prev, ...newItems];
+    });
+  };
+
+  // Khôi phục khung tiêu chí ban đầu cho đơn vị hoặc toàn bộ
+  const resetFrameworkTasks = (deptId?: string) => {
+    if (!deptId || deptId === 'ALL') {
+      setFrameworkTasks(initialFrameworkTasks);
+    } else {
+      setFrameworkTasks((prev) => {
+        const withoutDept = prev.filter((t) => t.departmentId !== deptId);
+        const originalDeptTasks = initialFrameworkTasks.filter((t) => t.departmentId === deptId);
+        return [...withoutDept, ...originalDeptTasks];
+      });
+    }
   };
 
   // Lấy bài nộp theo teacherId
@@ -315,6 +394,7 @@ export function KpiProvider({ children }: { children: React.ReactNode }) {
     setSchoolSettings(initialSchoolSettings);
     setPeriod(initialPeriod);
     setSubmissions(initialSubmissions);
+    setFrameworkTasks(initialFrameworkTasks);
   };
 
   return (
@@ -338,6 +418,13 @@ export function KpiProvider({ children }: { children: React.ReactNode }) {
         addTeachersFromExcel,
         addNewTeacher,
         removeTeacher,
+        frameworkTasks,
+        getCriteriaForDepartment,
+        addFrameworkTask,
+        updateFrameworkTask,
+        deleteFrameworkTask,
+        importFrameworkTasks,
+        resetFrameworkTasks,
         resetAllData,
       }}
     >

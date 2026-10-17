@@ -184,3 +184,185 @@ export function exportKpiReportExcel(submissions: any[], periodName: string): Bu
 
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 }
+
+export interface KpiCriteriaImportRow {
+  stt?: number;
+  departmentCode: string;
+  departmentName?: string;
+  section: 'SECTION_I' | 'SECTION_II';
+  category: 'FIXED' | 'EMERGING' | 'PROJECT';
+  code: string;
+  name: string;
+  description?: string;
+  standardScore: number;
+  difficultyCoefficient: number;
+  orderIndex?: number;
+}
+
+/**
+ * Tạo buffer file mẫu template_kpi_criteria.xlsx để cài đặt khung tiêu chí KPI
+ */
+export function generateKpiCriteriaTemplateBuffer(): Buffer {
+  const sampleCriteria = [
+    {
+      'STT': 1,
+      'Mã Đơn Vị (ALL/Mã Tổ)': 'ALL',
+      'Tên Đơn Vị': 'Toàn trường (Mặc định)',
+      'Phần Đánh Giá (MUC_I/MUC_II)': 'MUC_I',
+      'Loại Nhiệm Vụ (CO_DINH/DOT_XUAT/DU_AN)': 'CO_DINH',
+      'Mã Tiêu Chí': 'DD_01',
+      'Tên Tiêu Chí KPI': 'Chấp hành chủ trương, đường lối, pháp luật và đạo đức nhà giáo',
+      'Mô Tả Tiêu Chí': 'Gương mẫu, tận tụy, không vi phạm đạo đức nhà giáo và quy chế trường',
+      'Điểm Chuẩn': 10,
+      'Hệ Số Khó': 1.0,
+      'Thứ Tự': 1
+    },
+    {
+      'STT': 2,
+      'Mã Đơn Vị (ALL/Mã Tổ)': 'ALL',
+      'Tên Đơn Vị': 'Toàn trường (Mặc định)',
+      'Phần Đánh Giá (MUC_I/MUC_II)': 'MUC_I',
+      'Loại Nhiệm Vụ (CO_DINH/DOT_XUAT/DU_AN)': 'CO_DINH',
+      'Mã Tiêu Chí': 'DD_02',
+      'Tên Tiêu Chí KPI': 'Thực hiện quy chế chuyên môn, nền nếp kỷ luật lao động',
+      'Mô Tả Tiêu Chí': 'Đúng giờ lên lớp, hồ sơ giáo án đầy đủ, không bỏ tiết, chấm bài đúng lịch',
+      'Điểm Chuẩn': 10,
+      'Hệ Số Khó': 1.0,
+      'Thứ Tự': 2
+    },
+    {
+      'STT': 3,
+      'Mã Đơn Vị (ALL/Mã Tổ)': 'ALL',
+      'Tên Đơn Vị': 'Toàn trường (Mặc định)',
+      'Phần Đánh Giá (MUC_I/MUC_II)': 'MUC_I',
+      'Loại Nhiệm Vụ (CO_DINH/DOT_XUAT/DU_AN)': 'CO_DINH',
+      'Mã Tiêu Chí': 'DD_03',
+      'Tên Tiêu Chí KPI': 'Tinh thần đoàn kết, xây dựng tập thể, văn hóa công sở',
+      'Mô Tả Tiêu Chí': 'Tích cực tham gia hoạt động đoàn thể, hỗ trợ đồng nghiệp, ứng xử chuẩn mực',
+      'Điểm Chuẩn': 10,
+      'Hệ Số Khó': 1.0,
+      'Thứ Tự': 3
+    },
+    {
+      'STT': 4,
+      'Mã Đơn Vị (ALL/Mã Tổ)': 'ALL',
+      'Tên Đơn Vị': 'Toàn trường (Mặc định)',
+      'Phần Đánh Giá (MUC_I/MUC_II)': 'MUC_II',
+      'Loại Nhiệm Vụ (CO_DINH/DOT_XUAT/DU_AN)': 'CO_DINH',
+      'Mã Tiêu Chí': 'CM_01',
+      'Tên Tiêu Chí KPI': 'Chất lượng soạn giáo án và đổi mới phương pháp giảng dạy',
+      'Mô Tả Tiêu Chí': 'Thiết kế bài dạy phát triển năng lực, ứng dụng CNTT, đồ dùng trực quan số',
+      'Điểm Chuẩn': 15,
+      'Hệ Số Khó': 1.0,
+      'Thứ Tự': 1
+    },
+    {
+      'STT': 5,
+      'Mã Đơn Vị (ALL/Mã Tổ)': 'ALL',
+      'Tên Đơn Vị': 'Toàn trường (Mặc định)',
+      'Phần Đánh Giá (MUC_I/MUC_II)': 'MUC_II',
+      'Loại Nhiệm Vụ (CO_DINH/DOT_XUAT/DU_AN)': 'CO_DINH',
+      'Mã Tiêu Chí': 'CM_02',
+      'Tên Tiêu Chí KPI': 'Thực hiện giờ dạy trên lớp và kiểm tra đánh giá thường xuyên',
+      'Mô Tả Tiêu Chí': 'Đảm bảo chuẩn kiến thức kỹ năng, chấm chữa bài kịp thời, nhập điểm đúng hạn',
+      'Điểm Chuẩn': 15,
+      'Hệ Số Khó': 1.0,
+      'Thứ Tự': 2
+    },
+    {
+      'STT': 6,
+      'Mã Đơn Vị (ALL/Mã Tổ)': 'TOAN_TIN',
+      'Tên Đơn Vị': 'Tổ Toán - Tin học',
+      'Phần Đánh Giá (MUC_I/MUC_II)': 'MUC_II',
+      'Loại Nhiệm Vụ (CO_DINH/DOT_XUAT/DU_AN)': 'DU_AN',
+      'Mã Tiêu Chí': 'TT_01',
+      'Tên Tiêu Chí KPI': 'Số hóa ngân hàng đề thi trắc nghiệm và ứng dụng GeoGebra / lập trình',
+      'Mô Tả Tiêu Chí': 'Xây dựng kho câu hỏi chuẩn ma trận và hướng dẫn HS ứng dụng phần mềm',
+      'Điểm Chuẩn': 15,
+      'Hệ Số Khó': 1.2,
+      'Thứ Tự': 6
+    }
+  ];
+
+  const ws = XLSX.utils.json_to_sheet(sampleCriteria);
+  ws['!cols'] = [
+    { wch: 6 },  // STT
+    { wch: 22 }, // Mã Đơn Vị
+    { wch: 25 }, // Tên Đơn Vị
+    { wch: 28 }, // Phần Đánh Giá
+    { wch: 34 }, // Loại Nhiệm Vụ
+    { wch: 14 }, // Mã Tiêu Chí
+    { wch: 45 }, // Tên Tiêu Chí
+    { wch: 55 }, // Mô Tả
+    { wch: 12 }, // Điểm Chuẩn
+    { wch: 12 }, // Hệ Số Khó
+    { wch: 8 },  // Thứ Tự
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'KhungTieuChiKPI');
+
+  // Sheet Hướng dẫn
+  const guideData = [
+    { 'Thuộc tính': 'Mã Đơn Vị', 'Giá trị hợp lệ': 'ALL (Toàn trường) hoặc mã tổ: TOAN_TIN, NGU_VAN, KHTN, KHXH, NGOAI_NGU, VAN_PHONG' },
+    { 'Thuộc tính': 'Phần Đánh Giá', 'Giá trị hợp lệ': 'MUC_I (Mục I - Thang 30đ) hoặc MUC_II (Mục II - Thang 70đ quy đổi)' },
+    { 'Thuộc tính': 'Loại Nhiệm Vụ', 'Giá trị hợp lệ': 'CO_DINH (Cố định), DOT_XUAT (Đột xuất), DU_AN (Dài hạn/Dự án)' },
+    { 'Thuộc tính': 'Điểm Chuẩn', 'Giá trị hợp lệ': 'Số nguyên hoặc số thập phân (VD: 10, 15)' },
+    { 'Thuộc tính': 'Hệ Số Khó', 'Giá trị hợp lệ': 'Số thập phân (VD: 1.0, 1.1, 1.2, 1.5)' },
+  ];
+  const wsGuide = XLSX.utils.json_to_sheet(guideData);
+  XLSX.utils.book_append_sheet(wb, wsGuide, 'HuongDanQuyUoc');
+
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
+/**
+ * Đọc file Excel tải lên và parse thành danh sách tiêu chí KPI
+ */
+export function parseKpiCriteriaExcel(buffer: Buffer): KpiCriteriaImportRow[] {
+  const wb = XLSX.read(buffer, { type: 'buffer' });
+  const sheetName = wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  const rawRows: any[] = XLSX.utils.sheet_to_json(ws);
+
+  const parsedCriteria: KpiCriteriaImportRow[] = [];
+
+  for (const row of rawRows) {
+    const name = String(row['Tên Tiêu Chí KPI'] || row['name'] || row['Ten_Tieu_Chi'] || '').trim();
+    if (!name) continue;
+
+    // Xác định phần Mục I hay Mục II
+    const rawSection = String(row['Phần Đánh Giá (MUC_I/MUC_II)'] || row['Phần'] || row['section'] || 'MUC_II').toUpperCase();
+    const section: 'SECTION_I' | 'SECTION_II' = (rawSection.includes('I') && !rawSection.includes('II')) ? 'SECTION_I' : 'SECTION_II';
+
+    // Xác định loại nhiệm vụ
+    const rawCat = String(row['Loại Nhiệm Vụ (CO_DINH/DOT_XUAT/DU_AN)'] || row['Loại'] || row['category'] || 'CO_DINH').toUpperCase();
+    let category: 'FIXED' | 'EMERGING' | 'PROJECT' = 'FIXED';
+    if (rawCat.includes('DOT_XUAT') || rawCat.includes('EMERGING')) category = 'EMERGING';
+    else if (rawCat.includes('DU_AN') || rawCat.includes('PROJECT')) category = 'PROJECT';
+
+    const deptCode = String(row['Mã Đơn Vị (ALL/Mã Tổ)'] || row['departmentCode'] || 'ALL').trim().toUpperCase();
+    const deptName = String(row['Tên Đơn Vị'] || row['departmentName'] || '').trim();
+    const code = String(row['Mã Tiêu Chí'] || row['code'] || `TC_${Date.now()}`).trim();
+    const description = String(row['Mô Tả Tiêu Chí'] || row['description'] || '').trim();
+    const standardScore = Number(row['Điểm Chuẩn'] || row['standardScore'] || (section === 'SECTION_I' ? 10 : 15));
+    const difficultyCoefficient = Number(row['Hệ Số Khó'] || row['difficultyCoefficient'] || 1.0);
+    const orderIndex = Number(row['Thứ Tự'] || row['orderIndex'] || parsedCriteria.length + 1);
+
+    parsedCriteria.push({
+      departmentCode: deptCode,
+      departmentName: deptName,
+      section,
+      category,
+      code,
+      name,
+      description,
+      standardScore: isNaN(standardScore) ? 10 : standardScore,
+      difficultyCoefficient: isNaN(difficultyCoefficient) ? 1.0 : difficultyCoefficient,
+      orderIndex,
+    });
+  }
+
+  return parsedCriteria;
+}
+
