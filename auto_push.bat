@@ -1,20 +1,17 @@
 @echo off
-echo Dang theo doi thay doi thu muc...
-
 :loop
-:: Buoc 1: Gom tat ca thay doi vao staging area
+cls
+echo ===================================================
+echo   DANG THEO DOI THAY DOI VA TU DONG DONG BO GIT
+echo ===================================================
+echo Thoi gian kiem tra gan nhat: %time%
+
+:: Cu sau 60 giay se ep chay chuoi lenh nay
 git add .
+git commit -m "Auto update: %date% %time%"
+git push origin main
 
-:: Buoc 2: Kiem tra xem co su thay doi nao so voi phien ban truoc khong
-git diff --quiet HEAD
-if errorlevel 1 (
-    echo Co thay doi moi! Dang tu dong push len GitHub...
-    git commit -m "Auto update"
-    git push origin main
-    echo Cap nhat thanh cong.
-    echo -------------------------------------------
-)
-
-:: Buoc 3: Cho 60 giay truoc khi quet lai
-timeout /t 60 >nul
+echo ---------------------------------------------------
+echo Dang cho 60 giay de quet lan tiep theo...
+timeout /t 60
 goto loop
