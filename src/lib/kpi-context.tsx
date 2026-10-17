@@ -36,6 +36,9 @@ interface KpiContextType {
   reviewStep1ToTruong: (submissionId: string, reviewedItems: KpiSubmissionItem[], note: string) => void;
   reviewStep2Bgh: (submissionId: string, reviewedItems: KpiSubmissionItem[], note: string) => void;
   rejectSubmission: (submissionId: string, reason: string) => void;
+  bulkReviewStep1: (submissionIds: string[], note: string) => void;
+  bulkReviewStep2: (submissionIds: string[], note: string) => void;
+  bulkReject: (submissionIds: string[], reason: string) => void;
   addTeachersFromExcel: (teachers: UserProfile[]) => void;
   addNewTeacher: (teacher: UserProfile) => void;
   removeTeacher: (teacherId: string) => void;
@@ -366,6 +369,85 @@ export function KpiProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  // Duyệt hàng loạt Bước 1 (Tổ trưởng)
+  const bulkReviewStep1 = (submissionIds: string[], note: string) => {
+    const idSet = new Set(submissionIds);
+    setSubmissions((prev) =>
+      prev.map((s) => {
+        if (!idSet.has(s.id)) return s;
+        const updatedItems = (s.items || []).map((item) => ({
+          ...item,
+          toTruongScore: item.toTruongScore ?? item.selfScore,
+        }));
+        return {
+          ...s,
+          status: 'STEP1_APPROVED',
+          toTruongScoreSection1: s.toTruongScoreSection1 ?? s.selfScoreSection1,
+          toTruongScoreSection2: s.toTruongScoreSection2 ?? s.selfScoreSection2,
+          toTruongBonusScore: s.toTruongBonusScore ?? s.selfBonusScore,
+          toTruongTotalScore: s.toTruongTotalScore ?? s.selfTotalScore,
+          toTruongNote: note || 'Tổ trưởng duyệt đồng ý với kết quả tự đánh giá của giáo viên.',
+          toTruongReviewedBy: currentUser.id,
+          toTruongReviewedAt: new Date().toISOString(),
+          items: updatedItems,
+        };
+      })
+    );
+  };
+
+  // Duyệt chốt hàng loạt Bước 2 (Ban Giám Hiệu)
+  const bulkReviewStep2 = (submissionIds: string[], note: string) => {
+    const idSet = new Set(submissionIds);
+    setSubmissions((prev) =>
+      prev.map((s) => {
+        if (!idSet.has(s.id)) return s;
+        const finalSec1 = s.toTruongScoreSection1 ?? s.selfScoreSection1;
+        const finalSec2 = s.toTruongScoreSection2 ?? s.selfScoreSection2;
+        const finalBonus = s.toTruongBonusScore ?? s.selfBonusScore;
+        const finalScore = s.toTruongTotalScore ?? s.selfTotalScore;
+
+        let finalGrade: 'XUAT_SAC' | 'TOT' | 'HOAN_THANH' | 'CHUA_HOAN_THANH' = 'CHUA_HOAN_THANH';
+        if (finalScore >= 90) finalGrade = 'XUAT_SAC';
+        else if (finalScore >= 75) finalGrade = 'TOT';
+        else if (finalScore >= 50) finalGrade = 'HOAN_THANH';
+
+        const updatedItems = (s.items || []).map((item) => ({
+          ...item,
+          bghScore: item.bghScore ?? (item.toTruongScore ?? item.selfScore),
+        }));
+
+        return {
+          ...s,
+          status: 'STEP2_APPROVED',
+          bghScoreSection1: finalSec1,
+          bghScoreSection2: finalSec2,
+          bghBonusScore: finalBonus,
+          bghFinalScore: finalScore,
+          finalGrade,
+          bghNote: note || 'Ban Giám Hiệu phê duyệt chốt kết quả đánh giá KPI.',
+          bghReviewedBy: currentUser.id,
+          bghReviewedAt: new Date().toISOString(),
+          items: updatedItems,
+        };
+      })
+    );
+  };
+
+  // Trả lại hàng loạt
+  const bulkReject = (submissionIds: string[], reason: string) => {
+    const idSet = new Set(submissionIds);
+    setSubmissions((prev) =>
+      prev.map((s) => {
+        if (!idSet.has(s.id)) return s;
+        return {
+          ...s,
+          status: 'REJECTED',
+          toTruongNote: reason,
+        };
+      })
+    );
+  };
+
   // Import danh sách giáo viên từ Excel
   const addTeachersFromExcel = (newTeachers: UserProfile[]) => {
     setAllUsers((prev) => {
@@ -415,6 +497,9 @@ export function KpiProvider({ children }: { children: React.ReactNode }) {
         reviewStep1ToTruong,
         reviewStep2Bgh,
         rejectSubmission,
+        bulkReviewStep1,
+        bulkReviewStep2,
+        bulkReject,
         addTeachersFromExcel,
         addNewTeacher,
         removeTeacher,

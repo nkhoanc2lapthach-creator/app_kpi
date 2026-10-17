@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useKpi } from '@/lib/kpi-context';
 import { KpiSubmissionItem } from '@/lib/types';
 import { calculateOverallKpi, calculateItemScore } from '@/lib/kpi-calculator';
@@ -44,18 +44,8 @@ export default function MyKpiPage() {
   const [emergingDesc, setEmergingDesc] = useState('');
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  // Load items từ bài nộp hiện có hoặc tạo mặc định từ tiêu chí của Tổ
-  useEffect(() => {
-    if (existingSubmission && existingSubmission.items && existingSubmission.items.length > 0) {
-      setItems(existingSubmission.items);
-    } else {
-      // Khởi tạo các tiêu chí chuẩn theo đúng Tổ của giáo viên
-      syncCriteriaFromDepartment();
-    }
-  }, [existingSubmission, currentUser.id, currentUser.departmentId]);
-
   // Hàm đồng bộ tiêu chí từ Tổ bộ môn
-  const syncCriteriaFromDepartment = () => {
+  const syncCriteriaFromDepartment = useCallback(() => {
     const deptCriteria = getCriteriaForDepartment(currentUser.departmentId);
     if (deptCriteria && deptCriteria.length > 0) {
       const generatedItems: KpiSubmissionItem[] = deptCriteria.map((crit, idx) => ({
@@ -75,7 +65,17 @@ export default function MyKpiPage() {
       }));
       setItems(generatedItems);
     }
-  };
+  }, [currentUser.departmentId, getCriteriaForDepartment]);
+
+  // Load items từ bài nộp hiện có hoặc tạo mặc định từ tiêu chí của Tổ
+  useEffect(() => {
+    if (existingSubmission && existingSubmission.items && existingSubmission.items.length > 0) {
+      setItems(existingSubmission.items);
+    } else {
+      // Khởi tạo các tiêu chí chuẩn theo đúng Tổ của giáo viên
+      syncCriteriaFromDepartment();
+    }
+  }, [existingSubmission, currentUser.id, currentUser.departmentId, syncCriteriaFromDepartment]);
 
   const isReadOnly = existingSubmission?.status === 'SUBMITTED' || 
                      existingSubmission?.status === 'STEP1_APPROVED' || 
